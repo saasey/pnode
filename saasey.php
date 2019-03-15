@@ -15,6 +15,7 @@ class cURLHandler {
 
 	function __construct() {
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
+		$this->request['host'] = $_SERVER['REMOTE_ADDR'];
 		$this->users = [];
 		$this->path_user = "user_logs/";
 		$this->path_server = "server_logs/";
@@ -160,7 +161,7 @@ class cURLHandler {
 			mkdir($this->path_user);
 		if (!file_exists($this->path_user.$filename))
 			touch($this->path_user.$filename);
-		if ($this->find_user($this->request['email']) == true)
+		if ($this->find_user($this->request['host']) == true)
 			file_put_contents($this->path_user.$filename, json_encode($this->user));
 		else
 			file_put_contents($this->path_user.$filename, json_encode($this->request));			
@@ -217,7 +218,7 @@ class cURLHandler {
 
 	// look for an email address amongst the
 	// files that are in "users.conf"
-	public function find_user_queue($email) {
+	public function find_user_queue($value) {
 		$search = [];
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
@@ -225,15 +226,17 @@ class cURLHandler {
 			return false;
 		$file = file_get_contents("users.conf");
 		$files = json_decode($file);
+		$anchor = "";
 		foreach ($files as $value) {
 			if (!file_exists($this->path_user.$value) || filesize($this->path_user.$value) == 0 || $value == "." || $value == "..")
 				continue;
 			$dim = file_get_contents($this->path_user.$value);
 			$search = json_decode($dim);
-			if (isset($search->email) && $search->email == $email)
-				break;
+			foreach ($search as $k => $v)
+				if (isset($search->$k) && $search->$k == $value && $anchor = $k)
+					break;
 		}
-		if (!isset($search->email) || $search->email != $email)
+		if (!isset($search->$anchor) || $search->$anchor != $value)
 			return false;
 		foreach ($search as $k=>$v)
 			$this->user[$k] = $v;
@@ -302,12 +305,14 @@ class cURLHandler {
 
 			$this->users = json_decode($user_conf_opts_read);
 
+			// No stomping on resources.
+			if ($this->find_user_queue($this->request['host']) == true) {
+				usleep(1000);
+			}
+
 			// TRUE == run() and empty files except users' and server.conf
 			if (35 <= $this->user_count())
 				$this->full_queue_run();
-
-			if ($this->find_user_queue($this->request['email']) == true)
-				usleep(500);
 
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
