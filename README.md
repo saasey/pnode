@@ -1,5 +1,5 @@
 # Roborouter
-Here is the beginning of your best PHP routing and balancing system. Please, allow yourself to get comfy.
+Here is the beginning of your best PHP routing and balancing/DDOS slow-down system. Please, allow yourself to get comfy.
 
 PHP Experts: Founder Packs are now being taken up in order to supplement the beginning phases of media and other relevant sources of advertising. The Packs are $25. Your task is to lower the complexity and make it faster than it is. Also, documentation and new modules are welcome.
 
