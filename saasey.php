@@ -303,8 +303,11 @@ class cURLHandler {
 			$this->users = json_decode($user_conf_opts_read);
 
 			// TRUE == run() and empty files except users' and server.conf
-			if (35 <= $this->user_count() || $this->find_user_queue($this->request['email']) == true)
+			if (35 <= $this->user_count())
 				$this->full_queue_run();
+
+			if ($this->find_user_queue($this->request['email']) == true)
+				usleep(500);
 
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
