@@ -196,20 +196,22 @@ class cURLHandler {
 
 	// look for an email address amongst the
 	// files that are in $this->path_user
-	public function find_user($email) {
+	public function find_user($value) {
 		$search = [];
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
 		$files = scandir($this->path_user);
+		$anchor = "";
 		foreach ($files as $value) {
 			if (!file_exists($this->path_user.$value) || filesize($this->path_user.$value) == 0 || $value == "." || $value == "..")
 				continue;
 			$dim = file_get_contents($this->path_user.$value);
 			$search = json_decode($dim);
-			if (isset($search->email) && $search->email == $email)
-				break;
+			foreach ($search as $k => $v)
+				if (isset($search->$k) && $search->$k == $value && $anchor = $k)
+					break;
 		}
-		if (!isset($search->email) || $search->email != $email)
+		if (!isset($search->$anchor) || $search->$anchor != $value)
 			return false;
 		foreach ($search as $k=>$v)
 			$this->user[$k] = $v;
