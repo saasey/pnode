@@ -21,6 +21,10 @@ class cURLHandler {
 		$this->path_server = "server_logs/";
 	}
 
+	public function run_url_transfer() {
+		
+	}
+
 	public function run() {
 
 		// begin
@@ -47,9 +51,6 @@ class cURLHandler {
 		// swarm!
 		$this->execute_multiple_curl_handles($this->handles);
 		file_put_contents("users.conf", "");
-		$query_str = http_build_query($this->request);
-		$site = $this->request['server'] . "/";
-		header("Location: $site?$query_str");
 	}
 
 	public function create_multi_handler() {
@@ -91,19 +92,25 @@ class cURLHandler {
 			$field = array_merge($field, array($k => $v));
 		$field = array_merge($field, array("token" => $token));
 		$handle = curl_init($server_url);
+		$user_agent=$_SERVER['HTTP_USER_AGENT'];
+
 		curl_setopt($handle, CURLOPT_TIMEOUT, 20);
 		curl_setopt($handle, CURLOPT_URL, $server_url);
 		curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
 		curl_setopt($handle, CURLOPT_POST, 1);
+		curl_setopt($handle, CURLOPT_FOLLOWLOCATION,true);
 		curl_setopt($handle, CURLOPT_POSTFIELDS, json_encode($field));
+		curl_setopt($handle, CURLOPT_BINARYTRANSFER, true);
+		curl_setopt($handle, CURLOPT_ENCODING, "");
+		curl_setopt($handle, CURLOPT_USERAGENT, $user_agent);
 	   
 		$len = strlen(json_encode($field));
 		curl_setopt($handle, CURLOPT_HTTPHEADER, array(																	  
 			'Content-Type' => 'application/json',
-			'Content-Length' => $len
+			//'Content-Length' => $len
 			)
 		);
- 
+
 		return $handle;
 	}
 
@@ -274,10 +281,42 @@ class cURLHandler {
 	}
 
 	// make sure there was a request
-	public function validate_request(){
-		if ($this->request != null)
+	public function validate_request() {
+		echo json_encode($this->request);
+		if ($this->request != null && sizeof($this->request) != 1)
 			return true;
 		return false;
+	}
+
+	public function send_request() {
+		$file = file_get_contents("users.conf");
+		$user = json_decode($file);
+		if ($this->find_user_queue($user[0]) == false)
+			return false;
+		$req = [];
+		foreach ($this->user as $k => $v) {
+			$req = array_merge($req, array($k => $v));
+		}
+		$options = array(
+		  'http' => array(
+			'header'  => array("Content-type: application/x-www-form-urlencoded"),
+		        'method'  => 'POST',
+		        'content' => http_build_query($req)
+		        )
+		);
+		array_shift($user);
+		
+		file_put_contents("user.conf", $user);
+		$context  = stream_context_create($options);
+		$url = "http://" . $this->user['server'];
+		echo json_encode($this->user);
+		$result = file_get_contents($url, false, $context);
+		echo $result;
+		return true;
+	}
+
+	public function redirect() {
+		header("Location: $this->user->server");
 	}
 
 	public function update_queue() {
@@ -316,7 +355,7 @@ class cURLHandler {
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
-			if (35 <= $this->user_count())
+			if (35 <= $this->user_count() || 1)
 				$this->full_queue_run();
 
 			$this->save_user_log($this->request['session']);
@@ -354,3 +393,4 @@ class cURLHandler {
 	}
 
 	$handler->parse_call();
+	$handler->send_request();
