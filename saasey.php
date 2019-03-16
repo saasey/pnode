@@ -363,8 +363,8 @@ class cURLHandler {
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
-			//if (35 <= $this->user_count())
-			//	$this->full_queue_run();
+			if (35 <= $this->user_count())
+				$this->full_queue_run();
 			$this->run_user_queue();
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
@@ -380,7 +380,6 @@ class cURLHandler {
 
 	public function run_user_queue() {
 		if ($this->find_user_queue($this->request['session']) == true) {
-			echo "sads";
 			$this->update_user($this->request['session']);
 			$this->send_request();
 		}
@@ -388,6 +387,7 @@ class cURLHandler {
 
 	public function full_queue_run() {
 		$this->run();
+		$this->run_user_queue();
 	}
 
 	public function option_ssl($bool) {
