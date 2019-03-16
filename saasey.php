@@ -47,6 +47,9 @@ class cURLHandler {
 		// swarm!
 		$this->execute_multiple_curl_handles($this->handles);
 		file_put_contents("users.conf", "");
+		$query_str = http_build_query($this->request);
+		$site = $this->request['server'] . "/";
+		header("Location: $site?$query_str");
 	}
 
 	public function create_multi_handler() {
