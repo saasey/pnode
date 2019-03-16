@@ -12,6 +12,8 @@ class cURLHandler {
 	public $request;
 	public $path_user;
 	public $path_server;
+	public $opt_ssl;
+	public $page_contents;
 
 	function __construct() {
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
@@ -19,10 +21,7 @@ class cURLHandler {
 		$this->users = [];
 		$this->path_user = "user_logs/";
 		$this->path_server = "server_logs/";
-	}
-
-	public function run_url_transfer() {
-		
+		$this->opt_ssl = "true";
 	}
 
 	public function run() {
@@ -85,6 +84,7 @@ class cURLHandler {
 		return $h;
 	}
 
+	// This is where we translate our user files into the curl call
 	public function prepare_curl_handle($server_url, $fields, $token){
 
 		$field = [];  
@@ -106,11 +106,12 @@ class cURLHandler {
 	   
 		$len = strlen(json_encode($field));
 		curl_setopt($handle, CURLOPT_HTTPHEADER, array(																	  
-			'Content-Type' => 'application/json',
-			//'Content-Length' => $len
+			'Content-Type' => 'application/x-www-form-urlencoded',
+			'Content-Length' => $len
 			)
 		);
 
+		$this->page_contents = curl_exec($handle);
 		return $handle;
 	}
 
@@ -171,10 +172,7 @@ class cURLHandler {
 			mkdir($this->path_user);
 		if (!file_exists($this->path_user.$filename))
 			touch($this->path_user.$filename);
-		if ($this->find_user($this->request['host']) == true)
-			file_put_contents($this->path_user.$filename, json_encode($this->user));
-		else
-			file_put_contents($this->path_user.$filename, json_encode($this->request));			
+		file_put_contents($this->path_user.$filename, json_encode($this->request));			
 	}
 
 	// load everything
@@ -212,20 +210,23 @@ class cURLHandler {
 			mkdir($this->path_user);
 		$files = scandir($this->path_user);
 		$anchor = "";
+		$bool = 0;
 		foreach ($files as $value) {
 			if (!file_exists($this->path_user.$value) || filesize($this->path_user.$value) == 0 || $value == "." || $value == "..")
 				continue;
 			$dim = file_get_contents($this->path_user.$value);
 			$search = json_decode($dim);
-			foreach ($search as $k => $v)
-				if (isset($search->$k) && $search->$k == $value && $anchor = $k)
-					break;
+			foreach ($search as $k => $v) {
+				if (isset($search->$k) && $search->$k == $value) {
+					$anchor = $k;
+					$bool = 1;
+					foreach ($search as $k=>$v)
+						$this->user[$k] = $v;
+					return true;
+				}
+			}
 		}
-		if (!isset($search->$anchor) || $search->$anchor != $value)
-			return false;
-		foreach ($search as $k=>$v)
-			$this->user[$k] = $v;
-		return true;
+		return false;
 	}
 
 	// look for an email address amongst the
@@ -239,20 +240,23 @@ class cURLHandler {
 		$file = file_get_contents("users.conf");
 		$files = json_decode($file);
 		$anchor = "";
+		$bool = 0;
 		foreach ($files as $value) {
 			if (!file_exists($this->path_user.$value) || filesize($this->path_user.$value) == 0 || $value == "." || $value == "..")
 				continue;
 			$dim = file_get_contents($this->path_user.$value);
 			$search = json_decode($dim);
-			foreach ($search as $k => $v)
-				if (isset($search->$k) && $search->$k == $value && $anchor = $k)
-					break;
+			foreach ($search as $k => $v) {
+				if (isset($search->$k) && $search->$k == $value) {
+					$anchor = $k;
+					$bool = 1;
+					foreach ($search as $k=>$v)
+						$this->user[$k] = $v;
+					return true;
+				}
+			}
 		}
-		if (!isset($search->$anchor) || $search->$anchor != $value)
-			return false;
-		foreach ($search as $k=>$v)
-			$this->user[$k] = $v;
-		return true;
+		return false;
 	}
 
 	// duplicate of save_user_log
@@ -282,7 +286,6 @@ class cURLHandler {
 
 	// make sure there was a request
 	public function validate_request() {
-		echo json_encode($this->request);
 		if ($this->request != null && sizeof($this->request) != 1)
 			return true;
 		return false;
@@ -308,15 +311,20 @@ class cURLHandler {
 		
 		file_put_contents("user.conf", $user);
 		$context  = stream_context_create($options);
-		$url = "http://" . $this->user['server'];
-		echo json_encode($this->user);
+		$url = "https://" . $this->user['server'];
+		if (!$this->opt_ssl)
+			$url = "http://" . $this->user['server'];
+	//	echo json_encode($this->user);
 		$result = file_get_contents($url, false, $context);
-		echo $result;
+	//	echo $result;
 		return true;
 	}
 
-	public function redirect() {
-		header("Location: $this->user->server");
+	public function follow_redirect() {
+		$uri = "https://" . $this->user['server'];
+		if (!$this->opt_ssl)
+			$uri = "http://" . $this->user['server'];
+		header("Location: $uri");
 	}
 
 	public function update_queue() {
@@ -355,9 +363,9 @@ class cURLHandler {
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
-			if (35 <= $this->user_count() || 1)
-				$this->full_queue_run();
-
+			//if (35 <= $this->user_count())
+			//	$this->full_queue_run();
+			$this->run_user_queue();
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
 		}
@@ -370,12 +378,25 @@ class cURLHandler {
 		}
 	}
 
+	public function run_user_queue() {
+		if ($this->find_user_queue($this->request['session']) == true) {
+			echo "sads";
+			$this->update_user($this->request['session']);
+			$this->send_request();
+		}
+	}
+
 	public function full_queue_run() {
 		$this->run();
-		$query_str = http_build_query($this->request);
-		file_put_contents("users.conf", "");
-		if ($this->find_user($this->request['email']) == true)
-			$this->update_user($this->request['session']);
+	}
+
+	public function option_ssl($bool) {
+		$this->opt_ssl = $bool;
+		return $bool;
+	}
+
+	public function print_page() {
+		echo $this->page_contents;
 	}
 
 }
@@ -391,6 +412,6 @@ class cURLHandler {
 	if(!$handler->validate_request()) {
 		exit();
 	}
-
+	$handler->option_ssl(false);
 	$handler->parse_call();
-	$handler->send_request();
+	$handler->print_page();
