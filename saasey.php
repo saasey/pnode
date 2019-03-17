@@ -384,35 +384,44 @@ class cURLHandler {
 	// This is the only call you need
 	// 
 	public function parse_call() {
-		$remote_addr = $this->request['host'];
-		if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $this->request['host'], $serv))
+		if (!file_exists("spoof_list"))
+			touch("spoof_list");
+		$pre_spoof_filter = file_get_contents("spoof_list");
+		$spoof_list = json_decode($pre_spoof_filter);
+		if ($spoof_list != null && in_array($this->request['host'],$spoof_list))
+			exit();
+		else if (!$this->match_server($this->request['host']) && $spoof_list[] = $this->request['host']) {
+			$spoof_list = array_unique($spoof_list);
+			file_put_contents("spoof_list", $spoof_list);
+			exit();
+		}
+		else if (!$this->match_server($this->request['server']) && $spoof_list[] = $this->request['server']) {
+			$spoof_list = array_unique($spoof_list);
+			file_put_contents("spoof_list", $spoof_list);
+			exit();
+		}
+		$this->patch_connection();
+	}
+
+	public function match_server($host) {
+		$remote_addr = "";
+		if (preg_match("/[localhost]{9}/", $this->request['server'])) { return true; }
+		if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $host, $serv))
 			$remote_addr = gethostbyaddr($serv);
-		if (preg_match("/[A-z0-9]?\.?[A-z0-9]\.[A-z][\/]{0,1}$/", $remote_addr, $serv)) {
-			if (($remote_addr = gethostbyname($serv)) == false)
-				exit();
+		if (preg_match("/[A-z0-9]?\.?[A-z0-9]\.[A-z][\/]{0,1}$/", $host, $serv)) {
+			if (in_array($serv,$spoof_list) || ($remote_addr = gethostbyname($serv)) == false)
+				return false;
+			$remote_addr = $serv;
 		}
 		if (($check_addr_list = gethostbynamel($remote_addr)) == false
 			&& $remote_addr != "::1") {
-			exit();
+			return false;
 		}
 		$requested_addr = $this->request['server'];
-		if (preg_match("/[localhost]{9}/", $this->request['server'])) { $requested_addr = 1; }
-		else if (preg_match("/[A-z0-9]?[\.]?[A-z0-9][\.]{1}[A-z][\/]{0,1}$/", $requested_addr, $serv)) {
-			if (($check_addr_list = gethostbyaddr($serv)) == false)
-				exit();
-		}
-		else if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $requested_addr, $serv))
-			$requested_addr = gethostbyaddr($serv);
-		if (($check_addr_list = gethostbynamel($requested_addr)) == false
-			&& $requested_addr != 1) {
-			echo json_encode($check_addr_list);
-			exit();
-		}
-	
-		$this->patch_connect();
+		return true;
 	}
 
-	public function patch_connect() {
+	public function patch_connection() {
 		if (!file_exists("users.conf"))
 			touch("users.conf");
 		if (filesize("users.conf") > 0) {
