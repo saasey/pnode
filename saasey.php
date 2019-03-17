@@ -14,7 +14,8 @@ class cURLHandler {
 	public $path_server;
 	public $opt_ssl;
 	public $page_contents;
-
+	public $percent_diff;
+	public $delay;
 	function __construct() {
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
 		$this->request['host'] = $_SERVER['REMOTE_ADDR'];
@@ -22,6 +23,8 @@ class cURLHandler {
 		$this->path_user = "user_logs/";
 		$this->path_server = "server_logs/";
 		$this->opt_ssl = "true";
+		$this->percent_diff = 0.5;
+		$this->delay = 1175;
 	}
 
 	public function run() {
@@ -368,8 +371,8 @@ class cURLHandler {
 			$this->users = json_decode($user_conf_opts_read);
 
 			// No stomping on resources.
-			if ($this->deep_search() > 0.5) {
-				usleep(1175);
+			if ($this->deep_search() > $this->percent_diff) {
+				usleep($this->delay);
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
