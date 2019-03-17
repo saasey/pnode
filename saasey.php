@@ -421,7 +421,24 @@ class cURLHandler {
 		return true;
 	}
 
+	public function delay_connection() {
+		if (!file_exists("d_layer")) {
+			touch("d_layer");
+			file_put_contents("d_layer", 0);
+			$delayer_for = 1;
+		}
+		else {
+			$delayer_for = file_get_contents("d_layer");
+			$delayer_for++;
+		}
+		usleep(($this->delay * $delayer_for));
+		$delayer_for--;
+		file_put_contents("d_layer", $delayer_for);
+		return true;
+	}
+
 	public function patch_connection() {
+		$this->delay_connection();
 		if (!file_exists("users.conf"))
 			touch("users.conf");
 		if (filesize("users.conf") > 0) {
