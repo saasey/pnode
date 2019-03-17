@@ -357,9 +357,7 @@ class cURLHandler {
 		
 		file_put_contents("user.conf", $user);
 		$context  = stream_context_create($options);
-		$url = "https://" . $this->user['server'];
-		if (!$this->opt_ssl)
-			$url = "http://" . $this->user['server'];
+		$url = $this->opt_ssl . $this->user['server'];
 		$this->page_contents = file_get_contents($url, false, $context);
 		return true;
 	}
@@ -386,12 +384,35 @@ class cURLHandler {
 	// This is the only call you need
 	// 
 	public function parse_call() {
-		if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $this->request['host']))
-			$this->request['host'] = gethostbyaddr($this->request['host']);
-		if (($check_addr_list = gethostbynamel($this->request['host'])) == false && $_SERVER['REMOTE_ADDR'] != "::1") {
+		$remote_addr = $this->request['host'];
+		if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $this->request['host'], $serv))
+			$remote_addr = gethostbyaddr($serv);
+		if (preg_match("/[A-z0-9]?\.?[A-z0-9]\.[A-z][\/]{0,1}$/", $remote_addr, $serv)) {
+			if (($remote_addr = gethostbyname($serv)) == false)
+				exit();
+		}
+		if (($check_addr_list = gethostbynamel($remote_addr)) == false
+			&& $remote_addr != "::1") {
+			exit();
+		}
+		$requested_addr = $this->request['server'];
+		if (preg_match("/[localhost]{9}/", $this->request['server'])) { $requested_addr = 1; }
+		else if (preg_match("/[A-z0-9]?[\.]?[A-z0-9][\.]{1}[A-z][\/]{0,1}$/", $requested_addr, $serv)) {
+			if (($check_addr_list = gethostbyaddr($serv)) == false)
+				exit();
+		}
+		else if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $requested_addr, $serv))
+			$requested_addr = gethostbyaddr($serv);
+		if (($check_addr_list = gethostbynamel($requested_addr)) == false
+			&& $requested_addr != 1) {
 			echo json_encode($check_addr_list);
 			exit();
 		}
+	
+		$this->patch_connect();
+	}
+
+	public function patch_connect() {
 		if (!file_exists("users.conf"))
 			touch("users.conf");
 		if (filesize("users.conf") > 0) {
@@ -424,7 +445,9 @@ class cURLHandler {
 	}
 
 	public function option_ssl($bool) {
-		$this->opt_ssl = $bool;
+		$this->opt_ssl = "https://";
+		if ($bool == false)
+			$this->opt_ssl = "http://";
 		return $bool;
 	}
 
