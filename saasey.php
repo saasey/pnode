@@ -17,6 +17,7 @@ class cURLHandler {
 	public $page_contents;
 	public $percent_diff;
 	public $delay;
+	public $tax;
 
 	function __construct() {
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
@@ -24,9 +25,15 @@ class cURLHandler {
 		$this->users = [];
 		$this->path_user = "user_logs/";
 		$this->path_server = "server_logs/";
-		$this->opt_ssl = "true";
+		$this->path_tax = "user_tax/";
+		$this->opt_ssl = true;
 		$this->percent_diff = 0.5;
 		$this->delay = 1175;
+		if (!is_dir($this->path_tax))
+			mkdir($this->path_tax);
+		if (!file_exists($this->path_tax.$this->request['session']))
+			file_put_contents($this->path_tax.$this->request['session'], 0);
+		$this->tax = file_get_contents($this->path_tax.$this->request['session']);
 	}
 
 	public function run() {
@@ -41,7 +48,6 @@ class cURLHandler {
 			$user_vars = [];
 			$server = null;
 			$token = null;
-			if (is_array($value
 			foreach ($value as $k => $v) {
 				if ($k == 'server')
 					$servers = $v;
@@ -73,7 +79,7 @@ class cURLHandler {
 			if (!file_exists($this->path_user.$value) || $value == "." || $value == "..")
 				continue;
 			$dim = file_get_contents("users.conf");
-			$search = json_decode($dim);
+			$search[] = json_decode($dim);
 			$search = array_unique($search);
 		}
 		return $search;
@@ -210,7 +216,7 @@ class cURLHandler {
 
 	// look for an email address amongst the
 	// files that are in $this->path_user
-	public function find_user($value) {
+	public function find_user($token) {
 		$search = [];
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
@@ -223,7 +229,7 @@ class cURLHandler {
 			$dim = file_get_contents($this->path_user.$value);
 			$search = json_decode($dim);
 			foreach ($search as $k => $v) {
-				if (isset($search->$k) && $search->$k == $value) {
+				if (isset($search->$k) && $search->$k == $token) {
 					$anchor = $k;
 					$bool = 1;
 					foreach ($search as $k=>$v)
@@ -237,7 +243,7 @@ class cURLHandler {
 
 	// look for an email address amongst the
 	// files that are in "users.conf"
-	public function find_user_queue($value) {
+	public function find_user_queue($token) {
 		$search = [];
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
@@ -253,7 +259,7 @@ class cURLHandler {
 			$dim = file_get_contents($this->path_user.$value);
 			$search = json_decode($dim);
 			foreach ($search as $k => $v) {
-				if (isset($search->$k) && $search->$k == $value) {
+				if (isset($search->$k) && $search->$k == $token) {
 					$anchor = $k;
 					$bool = 1;
 					foreach ($search as $k=>$v)
@@ -286,8 +292,20 @@ class cURLHandler {
 					$x++;
 				$y++;
 			}
-			if ($y > 0 && $x/$y > $this->percent_diff)
+			if ($y > 0 && $x/$y > $this->percent_diff) {
+				if (!is_dir($this->path_tax))
+					mkdir($this->path_tax);
+				if (!file_exists($this->path_tax.$this->request['session'])) {
+					touch($this->path_tax.$this->request['session']);
+					$this->tax = 0;
+				}
+				else {
+					$this->tax = file_get_contents($this->path_tax.$this->request['session']);
+					$this->tax++;
+					file_put_contents($this->path_tax.$this->request['session'], $this->tax);
+				}
 				return $x/$y;
+			}
 		}
 		return 0;
 	}
@@ -342,17 +360,8 @@ class cURLHandler {
 		$url = "https://" . $this->user['server'];
 		if (!$this->opt_ssl)
 			$url = "http://" . $this->user['server'];
-	//	echo json_encode($this->user);
 		$this->page_contents = file_get_contents($url, false, $context);
-		echo "Af" .$this->page_contents;
 		return true;
-	}
-
-	public function follow_redirect() {
-		$uri = "https://" . $this->user['server'];
-		if (!$this->opt_ssl)
-			$uri = "http://" . $this->user['server'];
-		header("Location: $uri");
 	}
 
 	public function update_queue() {
@@ -384,12 +393,14 @@ class cURLHandler {
 
 			// No stomping on resources.
 			if ($this->deep_search() > $this->percent_diff) {
-				usleep($this->delay);
+				usleep($this->delay * $this->tax);
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
-			
-			$this->full_queue_run();
+			if ($this->tax > 3)
+				file_put_contents($this->path_tax.$this->request['session'], 0);
+			$this->run_user_queue();
+
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
 		}
@@ -403,14 +414,8 @@ class cURLHandler {
 	}
 
 	public function run_user_queue() {
-		echo "asdafad";
 		if ($this->find_user_queue($this->request['session']) == true)
-			echo "asas";
-	}
-
-	public function full_queue_run() {
-		$this->run();
-		$this->run_user_queue();
+			$this->send_request();
 	}
 
 	public function option_ssl($bool) {
