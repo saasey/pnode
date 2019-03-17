@@ -386,7 +386,7 @@ class cURLHandler {
 	// This is the only call you need
 	// 
 	public function parse_call() {
-		if (preg_match("/[(\d|\d\d|\d\d\d)]\.[(\d|\d\d|\d\d\d)]\.[(\d|\d\d|\d\d\d)]\.[(\d|\d\d|\d\d\d)]/", $this->request['host']))
+		if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $this->request['host']))
 			$this->request['host'] = gethostbyaddr($this->request['host']);
 		if (($check_addr_list = gethostbynamel($this->request['host'])) == false && $_SERVER['REMOTE_ADDR'] != "::1") {
 			echo json_encode($check_addr_list);
