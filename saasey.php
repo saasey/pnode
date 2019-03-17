@@ -1,5 +1,6 @@
 <?php
-   
+
+
 class cURLHandler {
 
 	public $ch;
@@ -16,6 +17,7 @@ class cURLHandler {
 	public $page_contents;
 	public $percent_diff;
 	public $delay;
+
 	function __construct() {
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
 		$this->request['host'] = $_SERVER['REMOTE_ADDR'];
@@ -39,6 +41,7 @@ class cURLHandler {
 			$user_vars = [];
 			$server = null;
 			$token = null;
+			if (is_array($value
 			foreach ($value as $k => $v) {
 				if ($k == 'server')
 					$servers = $v;
@@ -70,7 +73,7 @@ class cURLHandler {
 			if (!file_exists($this->path_user.$value) || $value == "." || $value == "..")
 				continue;
 			$dim = file_get_contents("users.conf");
-			$search[] = json_decode($dim);
+			$search = json_decode($dim);
 			$search = array_unique($search);
 		}
 		return $search;
@@ -185,7 +188,7 @@ class cURLHandler {
 			mkdir($this->path_server);
 		if (!file_exists($this->path_server.$filename))
 			return false;
-		$dim = file_get_contents($this->path_user.$value);
+		$dim = file_get_contents($this->path_user.$filename);
 		$decoded = json_decode($dim);
 		foreach ($decoded as $k=>$v)
 			$this->$k = $v;
@@ -199,10 +202,10 @@ class cURLHandler {
 		//$filename = $_COOKIE['PHPSESSID'];
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
-		$dim = file_get_contents($this->path_user.$value);
+		$dim = file_get_contents($this->path_user.$filename);
 		$decoded = json_decode($dim);
 		foreach ($decoded as $k=>$v)
-			$this->user->$k = $v;
+			$this->user[$k] = $v;
 	}
 
 	// look for an email address amongst the
@@ -270,12 +273,23 @@ class cURLHandler {
 	public function deep_search() {
 		$x = 0;
 		$y = 0;
-		foreach ($this->request as $k => $v) {
-			if ($this->find_user_queue($v) == true)
-				$x++;
-			$y++;
+		$z = 0;
+		$user_conf_opts_read = file_get_contents("users.conf");
+
+		$this->users = json_decode($user_conf_opts_read);
+		foreach ($this->users as $user) {
+			$x = 0;
+			$y = 0;
+			$this->get_user_log($user);
+			foreach ($this->user as $k => $v) {
+				if ($this->find_user_queue($v) == true)
+					$x++;
+				$y++;
+			}
+			if ($y > 0 && $x/$y > $this->percent_diff)
+				return $x/$y;
 		}
-		return $x/$y;
+		return 0;
 	}
 
 	// input the query string
@@ -330,6 +344,7 @@ class cURLHandler {
 			$url = "http://" . $this->user['server'];
 	//	echo json_encode($this->user);
 		$this->page_contents = file_get_contents($url, false, $context);
+		echo "Af" .$this->page_contents;
 		return true;
 	}
 
@@ -366,9 +381,6 @@ class cURLHandler {
 		if (!file_exists("users.conf"))
 			touch("users.conf");
 		if (filesize("users.conf") > 0) {
-			$user_conf_opts_read = file_get_contents("users.conf");
-
-			$this->users = json_decode($user_conf_opts_read);
 
 			// No stomping on resources.
 			if ($this->deep_search() > $this->percent_diff) {
@@ -376,9 +388,8 @@ class cURLHandler {
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
-			if (35 <= $this->user_count())
-				$this->full_queue_run();
-			$this->run_user_queue();
+			
+			$this->full_queue_run();
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
 		}
@@ -392,10 +403,9 @@ class cURLHandler {
 	}
 
 	public function run_user_queue() {
-		if ($this->find_user_queue($this->request['session']) == true) {
-			$this->update_user($this->request['session']);
-			$this->send_request();
-		}
+		echo "asdafad";
+		if ($this->find_user_queue($this->request['session']) == true)
+			echo "asas";
 	}
 
 	public function full_queue_run() {
