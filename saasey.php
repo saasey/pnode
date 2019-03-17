@@ -264,6 +264,17 @@ class cURLHandler {
 		$this->save_user_log($token);
 	}
 
+	public function deep_search() {
+		$x = 0;
+		$y = 0;
+		foreach ($this->request as $k => $v) {
+			if ($this->find_user_queue($v) == true)
+				$x++;
+			$y++;
+		}
+		return $x/$y;
+	}
+
 	// input the query string
 	public function get_servers($request) {
 		$this->servers = $request['server'];
@@ -315,8 +326,7 @@ class cURLHandler {
 		if (!$this->opt_ssl)
 			$url = "http://" . $this->user['server'];
 	//	echo json_encode($this->user);
-		$result = file_get_contents($url, false, $context);
-	//	echo $result;
+		$this->page_contents = file_get_contents($url, false, $context);
 		return true;
 	}
 
@@ -358,8 +368,8 @@ class cURLHandler {
 			$this->users = json_decode($user_conf_opts_read);
 
 			// No stomping on resources.
-			if ($this->find_user_queue($this->request['host']) == true) {
-				usleep(1000);
+			if ($this->deep_search() > 0.5) {
+				usleep(1175);
 			}
 
 			// TRUE == run() and empty files except users' and server.conf
