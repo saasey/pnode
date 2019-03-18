@@ -406,8 +406,11 @@ class cURLHandler {
 	public function match_server($host) {
 		$remote_addr = "";
 		if (preg_match("/[localhost]{9}/", $this->request['server'])) { return true; }
-		if (preg_match("/[(\d|\d\d|\d\d\d|\.)]{7}/", $host, $serv))
+		if (preg_match("/(\d\.|\d\d\.|\d\d\d\.){3}(\d|\d\d|\d\d\d){1}/", $host, $serv)) {
+			if (!filter_var($ip, FILTER_VALIDATE_IP))
+				return false;
 			$remote_addr = gethostbyaddr($serv);
+		}
 		if (preg_match("/[A-z0-9]?\.?[A-z0-9]\.[A-z][\/]{0,1}$/", $host, $serv)) {
 			if (in_array($serv,$spoof_list) || ($remote_addr = gethostbyname($serv)) == false)
 				return false;
@@ -432,7 +435,8 @@ class cURLHandler {
 			$delayer_for++;
 		}
 		usleep(($this->delay * $delayer_for));
-		$delayer_for--;
+		if ($delayer_for > 0)
+			$delayer_for--;
 		file_put_contents("d_layer", $delayer_for);
 		return true;
 	}
