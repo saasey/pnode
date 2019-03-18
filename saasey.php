@@ -432,12 +432,13 @@ class cURLHandler {
 		}
 		else {
 			$delayer_for = file_get_contents("d_layer");
-			$delayer_for++;
+			while ($delayer_for%7 > 3) {
+				$delayer_for = file_get_contents("d_layer");
+				$delayer_for--;
+				usleep(($this->delay));
+				file_put_contents("d_layer", $delayer_for);
+			}
 		}
-		usleep(($this->delay * $delayer_for));
-		if ($delayer_for > 0)
-			$delayer_for--;
-		file_put_contents("d_layer", $delayer_for);
 		return true;
 	}
 
