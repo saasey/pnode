@@ -1,46 +1,58 @@
 <?php
 
 
-class cURLHandler {
+class pURL {
 
 	public $ch;
 	public $user;
 	public $users;
-	public $servers;
+	// Required in REQUEST	//
+	public $server;		//
 	public $fields;
-	public $sessions;
+	// Required in REQUEST	//
+	public $session;	//
 	public $handles;
 	public $request;
-	public $refer_by;
+	// DO NOT PUT IN REQUEST//
+	public $refer_by;	//
+	public $relative;	//
+	public $from_addr;	//
+	// DO NOT PUT IN REQUEST//
 	public $path_user;
 	public $path_server;
 	public $opt_ssl;
 	public $page_contents;
 	public $percent_diff;
+	// Set for MAX delay in microseconds
 	public $delay;
-	public $tax;
-	public $relative;
-	public $from_addr;
+	// Set for MAX of history length of users
+	public $max_history;
 
 	function __construct() {
+
+	// Get query string in either GET or POST
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
+	// Get incoming address for relations to other IP class visitors
 		$this->request['host'] = $_SERVER['REMOTE_ADDR'];
-		$this->request['refer_by'] = [];
-		$this->request['relative'] = [];
-		$this->request['from_addr'] = [];
-		$this->add_referer();
+	// There are a couple things we use in pUrl to look at our users //
+		$this->request['refer_by'] = [];	//
+		$this->request['relative'] = [];	//
+		$this->request['from_addr'] = [];	//
+		$this->add_referer();			//
+	// This is for listing all users in the queue
 		$this->users = [];
-		$this->path_user = "user_logs/";
-		$this->path_server = "server_logs/";
-		$this->path_tax = "user_tax/";
+	// Default Directories for saving files from within pUrl	//
+		$this->path_user = "user_logs/";			//
+		$this->path_server = "server_logs/";			//
+	// Default is to turn off HTTPS:// but the program figures it out itself
+	// or the most part, but if you do run into trouble, just run this function
 		$this->option_ssl(false);
+	// Percent of equal critical data points before return in $this->users
+	// Change at any time
 		$this->percent_diff = 0.75;
+	// microsecond delay in wave function
 		$this->delay = 1175;
-		if (!is_dir($this->path_tax))
-			mkdir($this->path_tax);
-		if (!file_exists($this->path_tax.$this->request['session']))
-			file_put_contents($this->path_tax.$this->request['session'], 0);
-		$this->tax = file_get_contents($this->path_tax.$this->request['session']);
+		$this->max_history = 10;
 	}
 
 	public function run() {
@@ -195,6 +207,8 @@ class cURLHandler {
 		$fp = "";
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
+		if (!file_exists($this->path_user.$filename))
+			touch($this->path_user.$filename);
 		$dim = file_get_contents($filename);
 		$users = json_decode($dim);
 		$files = scandir($this->path_user);
@@ -318,12 +332,11 @@ class cURLHandler {
 	}
 
 	public function send_request() {
-		$file = file_get_contents("users.conf");
-		$user = json_decode($file);
-		if ($this->find_user_queue($user[0]) == false)
+		$this->get_user_queue();
+		if ($this->find_user_queue($this->users[0]) == false)
 			return false;
 		$req = [];
-		$this->get_user_log($user[0]);
+		$this->get_user_log($this->users[0]);
 		$options = array(
 		  'http' => array(
 			'header'  => array("Content-type: application/x-www-form-urlencoded"),
@@ -331,9 +344,9 @@ class cURLHandler {
 		        'content' => http_build_query((array)$this->user)
 		        )
 		);
-		array_shift($user);
+		array_shift($this->users);
 		
-		file_put_contents("users.conf", $user);
+		file_put_contents("users.conf", json_encode($this->users));
 		$context = stream_context_create($options);
 		$url = $this->opt_ssl . $this->user->server;
 		$this->page_contents = file_get_contents($url, false, $context);
@@ -341,30 +354,16 @@ class cURLHandler {
 	}
 
 	public function update_queue() {
-		$user_queue = [];
-		if (filesize("users.conf") > 0) {
-			$user_conf_opts_rw = file_get_contents("users.conf");
-
-			$json_user_conf = json_decode($user_conf_opts_rw);
-			$user_queue = null;
-		//	echo json_encode($json_user_conf);
-			foreach ($json_user_conf as $v) {
-				$user_queue[] = $v;
-			}
-		}
-		$user_queue[] = $this->request['session'];
-		$user_queue = array_unique($user_queue);
 		$this->update_user($this->request['session']);
-		$string = json_encode($user_queue);
-		file_put_contents("users.conf", $string);
+		file_put_contents("users.conf", json_encode($this->users));
 	}
 
 	public function disassemble_IP($host) {
 		if ($host == "::1")
 			return;
-		if (($trim = str_replace("http://","",$host)) == true)
+		else if (($trim = str_replace("http://","",$host)) == true)
 			$this->option_ssl(false);
-		if (($trim = str_replace("https://","",$host)) == true)
+		else if (($trim = str_replace("https://","",$host)) == true)
 			$this->option_ssl(true);
 		preg_match("/.\//", $trim, $output);
 		if (is_array($output))
@@ -406,21 +405,40 @@ class cURLHandler {
 	}
 
 	public function remove_referer() {
-		if (sizeof($this->request['refer_by']) == 10)
+		if (sizeof($this->request['refer_by']) == $this->max_history)
 			array_shift($this->request['refer_by']);
 		return sizeof($this->request['refer_by']);
+	}
+
+	public function relative_count() {
+		if ($this->user_count() > 100) {
+			foreach ($this->users as $key => $val) {
+				$x += $this->count_relatives($val);
+				if ($x > 20) {
+					$this->delay_connection();
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	// This is the only call you need
 	// 
 	public function parse_call() {
 		$this->spoof_check();
-		if (!$this->match_server($this->request['host']))
+		if (!$this->match_server($this->request['host'])) {
+			echo "Fatal Error: Your address is unknown";
 			exit();
-		else if (!$this->match_server($this->request['server']))
+		}
+		else if (!$this->match_server($this->request['server'])) {
+			echo "Fatal Error: Target address unknown";
 			exit();
+		}
 		$host = $this->request['host'];
 		$this->disassemble_IP($host);
+		$this->get_user_queue();
+		$this->relative_count();
 		$this->delay_connection();
 		$this->patch_connection();
 	}
@@ -439,9 +457,7 @@ class cURLHandler {
 	public function match_server($host) {
 		$trim = str_replace("http://","",$host);
 		$trim = str_replace("https://","",$host);
-		if ($host == "::1")
-			return true;
-		else if (preg_match("/localhost./",$host))
+		if ($host == "::1" || preg_match("/localhost./",$host))
 			return true;
 		else if (filter_var($host, FILTER_VALIDATE_URL) == false
 			&& ($check_addr_list = gethostbynamel($host)) == false) {
@@ -453,34 +469,35 @@ class cURLHandler {
 		return true;
 	}
 
-	public function delay_connection() {
-		if (!file_exists("d_layer")) {
-			touch("d_layer");
-			file_put_contents("d_layer", 1);
-		}
-		else if (sizeof($this->users) > 10) {			
-			$x = 0;
-			$current_IP = $this->user->A.".".$this->user->B.".".$this->user->C.".";
-			foreach ($this->users->relative as $v) {
-				if ($v == $this->request['session'])
-					$x++;
+	public function count_relatives($addr) {
+		$this->get_user_log($addr);
+		$x = [];
+		foreach ($this->user as $key => $val) {
+			if ($key != 'relative' || json_decode($key) == null)
+				continue;
+			foreach ($key as $relationships) {
+				if ($relationships == $this->request['session'])
+					$x[] = $relationships;
 			}
-			if ($x > 10) {
-				get_user_queue();
-				array_shift($this->users);
+		}
+		return $x;
+	}
+
+	public function delay_connection() {
+		if (sizeof($this->users) > 2000) {
+			$x = [];
+			foreach ($this->users as $k => $v) {
+				$x = $this->count_relatives($v);
+			}
+			if (sizeof($x) > 50) {
+				foreach ($x as $value) {
+					while (count(array_keys($this->users, $value)) > 1)
+						array_splice($this->users, array_search($value, $this->users), 1);
+				}
 				$this->users[] = $this->request['session'];
-				file_put_contents("users.conf", json_encode($this->users));
 				exit();
 			}
-		}
-		else {
-			$delayer_for = file_get_contents("d_layer");
-			$delayer_for++;
-			file_put_contents("d_layer", $delayer_for%6);
-			while ($delayer_for%6 > 0) {
-				$delayer_for--;
-				usleep($this->delay);
-			}
+			file_put_contents("users.conf", json_encode($this->users));
 		}
 		return true;
 	}
@@ -488,10 +505,8 @@ class cURLHandler {
 	public function patch_connection() {
 		if (!file_exists("users.conf"))
 			touch("users.conf");
-		if (filesize("users.conf") > 0) {
-
+		if (sizeof($this->users) > 0) {
 			$this->run_queue();
-
 			$this->save_user_log($this->request['session']);
 			$this->update_queue();
 		}
@@ -528,7 +543,7 @@ class cURLHandler {
 		setcookie("token", null, time() - 3600);
 	setcookie("token", $_COOKIE['PHPSESSID'], time() + (86400 * 365), "/");
 
-	$handler = new cURLHandler();
+	$handler = new pUrl();
 
 	$handler->parse_call();
 	$handler->print_page();
