@@ -387,6 +387,7 @@ class pURL extends pUser {
 			array_shift($this->request['refer_by']);
 		return sizeof($this->request['refer_by']);
 	}
+
 	//***
 	public function relative_count() {
 		if ($this->user_count() > 100) {
@@ -398,6 +399,7 @@ class pURL extends pUser {
 				}
 			}
 		}
+		$this->patch_connection();
 		return false;
 	}
 
@@ -419,9 +421,8 @@ class pURL extends pUser {
 		$host = $this->request['host'];
 		$this->disassemble_IP($host);
 		$this->get_user_queue();
+		$this->users[] = $this->request['session'];
 		$this->relative_count();
-		$this->delay_connection();
-		$this->patch_connection();
 	}
 
 	// ***
@@ -454,7 +455,7 @@ class pURL extends pUser {
 	}
 
 	// ***
-	public function count_relatives($addr) {
+	public function return_relatives($addr) {
 		$this->get_user_log($addr);
 		$x = [];
 		foreach ($this->user as $key => $val) {
@@ -472,19 +473,30 @@ class pURL extends pUser {
 	public function delay_connection() {
 		if (sizeof($this->users) > 2000) {
 			$x = [];
-			foreach ($this->users as $k => $v) {
-				$x = $this->count_relatives($v);
-			}
-			if (sizeof($x) > 50) {
-				foreach ($x as $value) {
-					while (count(array_keys($this->users, $value)) > 1)
-						array_splice($this->users, array_search($value, $this->users), 1);
-				}
-				$this->users[] = $this->request['session'];
+			if ($this->relative_count() > 50) {
+				$this->save_user_log($this->request['session']);
+				array_unique($this->users);
+				file_put_contents("users.conf", json_encode($this->users));
 				exit();
 			}
-			file_put_contents("users.conf", json_encode($this->users));
 		}
+		if ($this->users[0] == $this->request['session']) {
+			$this->save_user_log($this->request['session']);
+			array_unique($this->users);
+			$this->patch_connection();
+		}
+		else if (count(array_keys($this->users, $this->request['session'])) > 1) {
+			$this->save_user_log($this->request['session']);
+			array_unique($this->users);
+			file_put_contents("users.conf", json_encode($this->users));
+			exit();
+		}
+		else {
+			$this->save_user_log($this->request['session']);
+			array_unique($this->users);	
+		}
+			
+		file_put_contents("users.conf", json_encode($this->users));
 		return true;
 	}
 
