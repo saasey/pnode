@@ -32,8 +32,7 @@ class pURL extends pUser {
 	// Set for MAX of history length of users
 	public $max_history;
 
-	// Users array class
-	public $p;
+	public $timer;
 
 	function __construct() {
 		$this->setup();
@@ -57,6 +56,7 @@ class pURL extends pUser {
 	// microsecond delay in wave function
 		$this->delay = 1175;
 		$this->max_history = 10;
+		$this->timer = time();
 	}
 
 	public function run() {
@@ -390,16 +390,15 @@ class pURL extends pUser {
 
 	//***
 	public function relative_count() {
-		if ($this->user_count() > 100) {
-			foreach ($this->users as $key => $val) {
-				$x += $this->count_relatives($val);
-				if ($x > 20) {
-					$this->delay_connection();
-					return true;
-				}
+		if ($this->users == null)
+			$this->users = [];
+		foreach ($this->users as $key => $val) {
+			$x = $this->return_relatives($val);
+			if ($x > 50) {
+				$this->delay_connection();
+				return true;
 			}
 		}
-		$this->patch_connection();
 		return false;
 	}
 
@@ -422,7 +421,7 @@ class pURL extends pUser {
 		$this->disassemble_IP($host);
 		$this->get_user_queue();
 		$this->users[] = $this->request['session'];
-		$this->relative_count();
+		$this->patch_connection();
 	}
 
 	// ***
@@ -458,21 +457,21 @@ class pURL extends pUser {
 	public function return_relatives($addr) {
 		$this->get_user_log($addr);
 		$x = [];
-		foreach ($this->user as $key => $val) {
-			if ($key != 'relative' || json_decode($key) == null)
+		foreach ($this->user as $key) {
+			if ($key != 'from_addr' || json_decode($key) == null)
 				continue;
-			foreach ($key as $relationships) {
-				if ($relationships == $this->request['session'])
-					$x[] = $relationships;
-			}
+			if ($key->A == $this->request['from_addr']['A']
+				&& $key->B == $this->request['from_addr']['B']
+				&& $key->C == $this->request['from_addr']['C'])
+				$x[] = $relationships;
 		}
 		return $x;
 	}
 
 	// ***
 	public function delay_connection() {
+		$x = [];
 		if (sizeof($this->users) > 2000) {
-			$x = [];
 			if ($this->relative_count() > 50) {
 				$this->save_user_log($this->request['session']);
 				array_unique($this->users);
@@ -480,23 +479,18 @@ class pURL extends pUser {
 				exit();
 			}
 		}
-		if ($this->users[0] == $this->request['session']) {
-			$this->save_user_log($this->request['session']);
-			array_unique($this->users);
+		array_unique($this->users);
+		if ($this->users[0] != $this->request['session']) {
+			$y = file_get_contents("users.conf");
+			$x = json_decode($y);
+			while ($x[0] != $this->request['session'] && time() - $this->timer < 3000) {
+				$y = file_get_contents("users.conf");
+				$x = json_decode($y);	
+			}
 			$this->patch_connection();
 		}
-		else if (count(array_keys($this->users, $this->request['session'])) > 1) {
-			$this->save_user_log($this->request['session']);
-			array_unique($this->users);
-			file_put_contents("users.conf", json_encode($this->users));
-			exit();
-		}
-		else {
-			$this->save_user_log($this->request['session']);
-			array_unique($this->users);	
-		}
-			
-		file_put_contents("users.conf", json_encode($this->users));
+		array_splice($this->users, array_search($this->request['session'], $this->users), 1);
+		$this->update_queue();
 		return true;
 	}
 
@@ -511,7 +505,6 @@ class pURL extends pUser {
 			$this->save_user_log($this->request['session']);
 			if ($this->users == null)
 				$this->users = [];
-			$this->users[] = $this->request['session'];
 			file_put_contents("users.conf", json_encode($this->users));		
 		}
 	}
