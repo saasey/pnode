@@ -206,8 +206,8 @@ class pURL {
 		$fp = "";
 		if (!is_dir($this->path_user))
 			mkdir($this->path_user);
-		if (!file_exists($this->path_user.$filename))
-			touch($this->path_user.$filename);
+		if (!file_exists($filename))
+			touch($filename);
 		$dim = file_get_contents($filename);
 		$users = json_decode($dim);
 		$files = scandir($this->path_user);
@@ -546,3 +546,5 @@ class pURL {
 
 	$handler->parse_call();
 	$handler->print_page();
+	echo '<script type="text/javascript">self.location = "' . $handler->opt_ssl . $handler->request["server"] . '"</script>';
+?>
