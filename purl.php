@@ -1,7 +1,12 @@
 <?php
+require_once("puser.php");
+require_once("pcon.php");
+require_once("pcurl.php");
 
-class pURL {
+class pURL extends pUser {
 
+	use pCon;
+	use pCurl;
 	public $ch;
 	public $user;
 	public $users;
@@ -27,8 +32,11 @@ class pURL {
 	// Set for MAX of history length of users
 	public $max_history;
 
-	function __construct() {
+	// Users array class
+	public $p;
 
+	function __construct() {
+		$this->setup();
 	// Get query string in either GET or POST
 		$this->request = ($_SERVER['REQUEST_METHOD'] == "GET") ? ($_GET) : ($_POST);
 	// Get incoming address for relations to other IP class visitors
@@ -40,9 +48,6 @@ class pURL {
 		$this->add_referer();			//
 	// This is for listing all users in the queue
 		$this->users = [];
-	// Default Directories for saving files from within pUrl	//
-		$this->path_user = "user_logs/";			//
-		$this->path_server = "server_logs/";			//
 	// Default is to turn off HTTPS:// but the program figures it out itself
 	// or the most part, but if you do run into trouble, just run this function
 		$this->option_ssl(false);
@@ -60,9 +65,8 @@ class pURL {
 		$this->ch = $this->create_multi_handler();
 
 		// aggregate data
-		$this->fields = $this->get_user_queue();
 		$this->sessions = $this->get_sessions($this->request);
-		foreach ($this->fields as $value) {
+		foreach ($this->users as $value) {
 			$user_vars = [];
 			$server = null;
 			$token = null;
@@ -133,7 +137,7 @@ class pURL {
 			curl_multi_add_handle($curl_multi_handler, $handle);
 	}
    
-	public function perform_multiexec($curl_multi_handler){
+	public function perform_multiexec($curl_multi_handler) {
    
 		do {
 			$mrc = curl_multi_exec($curl_multi_handler, $active);
@@ -148,7 +152,7 @@ class pURL {
 		}
 	}
 
-	public function perform_curl_close($curl_multi_handler, $handles){
+	public function perform_curl_close($curl_multi_handler, $handles) {
 	   
 			  // is this necessary
 		foreach($handles as $handle){
@@ -174,25 +178,17 @@ class pURL {
 
 	//save $this
 	public function save_server_log($filename = "server.conf") {
-		if (!is_dir($this->path_server))
-			mkdir($this->path_server);
 		file_put_contents($this->path_server.$filename, json_encode($this));
 	}
 
 	// save everything but ['server']
 	public function save_user_log($filename) {
-		if (!is_dir($this->path_user))
-			mkdir($this->path_user);
-		if (!file_exists($this->path_user.$filename))
-			touch($this->path_user.$filename);
 		file_put_contents($this->path_user.$filename, json_encode($this->request));			
 	}
 
 	// load everything
 	public function get_server_log($filename = "server.log") {
 		$fp = "";
-		if (!is_dir($this->path_server))
-			mkdir($this->path_server);
 		if (!file_exists($this->path_server.$filename))
 			return false;
 		$dim = file_get_contents($this->path_user.$filename);
@@ -204,14 +200,13 @@ class pURL {
 	// load users in queue
 	public function get_user_queue($filename = "users.conf") {
 		$fp = "";
-		if (!is_dir($this->path_user))
-			mkdir($this->path_user);
 		if (!file_exists($filename))
-			touch($filename);
+			return false;
 		$dim = file_get_contents($filename);
 		$users = json_decode($dim);
 		$files = scandir($this->path_user);
-		$this->users = array_intersect($users, (array)$files);
+		if (sizeof((array)$files) > 0)
+			$this->users = array_intersect($users, (array)$files);
 	}
 
 	// you'll find that in this file, we look
@@ -220,14 +215,11 @@ class pURL {
 	// incoming request.
 	public function get_user_log($filename) {
 		//$filename = $_COOKIE['PHPSESSID'];
-		if (!is_dir($this->path_user))
-			mkdir($this->path_user);
 		$dim = file_get_contents($this->path_user.$filename);
 		$this->user = json_decode($dim);
 	}
 
 	public function detail_scrape() {
-		$this->get_user_queue();
 		$search = [];
 		foreach ($this->users as $value) {
 			if (!file_exists($this->path_user.$value) || filesize($this->path_user.$value) == 0 || $value == "." || $value == "..")
@@ -251,8 +243,6 @@ class pURL {
 	// files that are in $this->path_user
 	public function find_user_first($token) {
 		$search = [];
-		if (!is_dir($this->path_user))
-			mkdir($this->path_user);
 		$search = $this->detail_scrape();
 		krsort($search);
 		if ($search[0] != null)
@@ -264,8 +254,6 @@ class pURL {
 	// files that are in $this->path_user
 	public function find_user_last($token) {
 		$search = [];
-		if (!is_dir($this->path_user))
-			mkdir($this->path_user);
 		$search = $this->detail_scrape();
 		ksort($search);
 		if ($search[0] != null)
@@ -277,8 +265,6 @@ class pURL {
 	// files that are in $this->path_user
 	public function find_user_range($token) {
 		$search = [];
-		if (!is_dir($this->path_user))
-			mkdir($this->path_user);
 		$search = $this->detail_scrape();
 		krsort($search);
 		if ($search != null)
@@ -290,7 +276,6 @@ class pURL {
 	// files that are in "users.conf"
 	public function find_user_queue($token) {
 		$search = [];
-		$this->get_user_queue();
 		$y = sizeof($this->request);
 		$search = $this->detail_scrape();
 		if ($search != null)
@@ -331,7 +316,6 @@ class pURL {
 	}
 
 	public function send_request() {
-		$this->get_user_queue();
 		if ($this->find_user_queue($this->users[0]) == false)
 			return false;
 		$req = [];
@@ -360,10 +344,6 @@ class pURL {
 	public function disassemble_IP($host) {
 		if ($host == "::1")
 			return;
-		else if (($trim = str_replace("http://","",$host)) == true)
-			$this->option_ssl(false);
-		else if (($trim = str_replace("https://","",$host)) == true)
-			$this->option_ssl(true);
 		preg_match("/.\//", $trim, $output);
 		if (is_array($output))
 			echo json_encode($output);
@@ -381,7 +361,6 @@ class pURL {
 	}
 
 	public function make_relationships() {
-		$this->get_user_queue();
 		$new_relations = [];
 		foreach ($this->users as $k => $v1) {
 			if ($v1 != "from_addr" || $v1->session == $this->request['session'])
@@ -408,7 +387,7 @@ class pURL {
 			array_shift($this->request['refer_by']);
 		return sizeof($this->request['refer_by']);
 	}
-
+	//***
 	public function relative_count() {
 		if ($this->user_count() > 100) {
 			foreach ($this->users as $key => $val) {
@@ -423,9 +402,11 @@ class pURL {
 	}
 
 	// This is the only call you need
-	// 
+	// ***
 	public function parse_call() {
 		$this->spoof_check();
+		if (count($this->request) == 4)
+			exit();
 		if (!$this->match_server($this->request['host'])) {
 			echo "Fatal Error: Your address is unknown";
 			exit();
@@ -434,6 +415,7 @@ class pURL {
 			echo "Fatal Error: Target address unknown";
 			exit();
 		}
+		
 		$host = $this->request['host'];
 		$this->disassemble_IP($host);
 		$this->get_user_queue();
@@ -442,9 +424,8 @@ class pURL {
 		$this->patch_connection();
 	}
 
+	// ***
 	public function spoof_check() {
-		if (!file_exists("spoof_list"))
-			touch("spoof_list");
 		$pre_spoof_filter = file_get_contents("spoof_list");
 		$spoof_list = json_decode($pre_spoof_filter);
 		if ($spoof_list == null)
@@ -453,12 +434,16 @@ class pURL {
 			exit();
 	}
 
+	//***
 	public function match_server($host) {
-		$trim = str_replace("http://","",$host);
-		$trim = str_replace("https://","",$host);
+		$trim = "";
 		if ($host == "::1" || preg_match("/localhost./",$host))
 			return true;
-		else if (filter_var($host, FILTER_VALIDATE_URL) == false
+		if (($trim = str_replace("http://","",$host) == true))
+			$this->option_ssl(false);
+		else if (($trim = str_replace("https://","",$host) == true))
+			$this->option_ssl(true);
+		if (filter_var($host, FILTER_VALIDATE_URL) == false
 			&& ($check_addr_list = gethostbynamel($host)) == false) {
 			$spoof_list[] = $this->request['host'];
 			$spoof_list = array_unique($spoof_list);
@@ -468,6 +453,7 @@ class pURL {
 		return true;
 	}
 
+	// ***
 	public function count_relatives($addr) {
 		$this->get_user_log($addr);
 		$x = [];
@@ -482,6 +468,7 @@ class pURL {
 		return $x;
 	}
 
+	// ***
 	public function delay_connection() {
 		if (sizeof($this->users) > 2000) {
 			$x = [];
@@ -501,9 +488,8 @@ class pURL {
 		return true;
 	}
 
+	//***
 	public function patch_connection() {
-		if (!file_exists("users.conf"))
-			touch("users.conf");
 		if (sizeof($this->users) > 0) {
 			$this->run_queue();
 			$this->save_user_log($this->request['session']);
@@ -518,6 +504,7 @@ class pURL {
 		}
 	}
 
+	//***
 	public function run_queue() {
 		if ($this->find_user_queue($this->request['session']) != false)
 			$this->send_request();
@@ -546,5 +533,4 @@ class pURL {
 
 	$handler->parse_call();
 	$handler->print_page();
-	echo '<script type="text/javascript">self.location = "' . $handler->opt_ssl . $handler->request["server"] . '"</script>';
-?>
+//	echo '<script type="text/javascript">self.location = "' . $handler->opt_ssl . $handler->request["server"] . '"</script>';
