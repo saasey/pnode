@@ -11,8 +11,8 @@
 	var return_method = "";
 	var elem = document.getElementById(ev.target.id);
 
-
 	if (elem === null || elem === undefined) {
+	//return if non-pipe
 		if (ev.target.onclick !== null && ev.target.onclick !== undefined)
 			(ev.target.onclick)();
 	//does not mix with href (but you can still use <a></a>)
@@ -25,20 +25,25 @@
 	var elem_values = document.getElementsByClassName("data-pipe");
 	var elem_qstring = "";
 
-	//return if non-pipe
-
 	// No 'pipe' means it is generic
 	for (var i = 0 ; i < elem_values.length ; i++) {
 	//if this is designated as belonging to another pipe, it won't be passed in the url
 		if (!elem_values[i].hasAttribute("pipe") || elem_values[i].getAttribute("pipe") == elem.id)
 			elem_qstring = elem_qstring + elem_values[i].name + "=" + elem_values[i].value + "&";
-		if (elem_values.hasAttribute(multiple)) {
+	// No 'pipe' means it is generic
+	for (var i = 0 ; i < elem_values.length ; i++) {
+	//if this is designated as belonging to another pipe, it won't be passed in the url
+		if (!elem_values[i].hasAttribute("pipe") || elem_values[i].getAttribute("pipe") == elem.id)
+			elem_qstring = elem_qstring + elem_values[i].name + "=" + elem_values[i].value + "&";
+		if (elem_values[i].hasAttribute("multiple")) {
 			for (var o of elem_values.options) {
 				if (o.selected) {
 					elem_qstring = elem_qstring + elem_values[i].name + "=" + o.value + "&";
 				}
 			}
 		}
+	}
+
 	}
 
 	//strip last & char
