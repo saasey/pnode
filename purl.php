@@ -68,7 +68,7 @@ class pURL extends pUser {
 		$this->sessions = $this->get_sessions($this->request);
 		foreach ($this->users as $value) {
 			$user_vars = [];
-			$server = null;
+			$servers = null;
 			$token = null;
 			foreach ($value as $k => $v) {
 				if ($k == 'server')
@@ -78,7 +78,7 @@ class pURL extends pUser {
 				else if ($k == 'session')
 					$token = $v;
 			}
-			$this->handles[] = $this->prepare_curl_handle($this->servers, $user_vars, $token);
+			$this->handles[] = $this->prepare_curl_handle($servers, $user_vars, $token);
 		}
 
 		// swarm!
