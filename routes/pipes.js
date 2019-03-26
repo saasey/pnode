@@ -20,16 +20,14 @@
 			window.location.href = ev.target.href;
 		return;
 	}
-	//use 'data-pipe' as the classname to include its value
-	// specify which pipe with pipe="target.id"
+//use 'data-pipe' as the classname to include its value
+// specify which pipe with pipe="target.id"
 	var elem_values = document.getElementsByClassName("data-pipe");
 	var elem_qstring = "";
-
-	//return if non-pipe
-
-	// No 'pipe' means it is generic
+		
+// No 'pipe' means it is generic
 	for (var i = 0 ; i < elem_values.length ; i++) {
-	//if this is designated as belonging to another pipe, it won't be passed in the url
+//if this is designated as belonging to another pipe, it won't be passed in the url
 		if (!elem_values[i].hasAttribute("pipe") || elem_values[i].getAttribute("pipe") == elem.id)
 			elem_qstring = elem_qstring + elem_values[i].name + "=" + elem_values[i].value + "&";
 		if (elem_values[i].hasAttribute("multiple")) {
@@ -41,18 +39,18 @@
 		}
 	}
 
-	//strip last & char
+//strip last & char
 	if (elem_qstring[elem_qstring.length-1] === "&")
 		elem_qstring = elem_qstring.substring(0, elem_qstring.length - 1);
 
-	// if thru-pipe isn't used, then use to-pipe
+// if thru-pipe isn't used, then use to-pipe
 	if (!elem.hasAttribute("thru-pipe")) {
 		if (elem.hasAttribute("to-pipe") && elem.getAttribute("to-pipe") !== "")
 			window.location.href = elem.getAttribute("to-pipe") + "?" + elem_qstring;
 		return;
 	}
 
-	// communicate properties of Fetch Request
+// communicate properties of Fetch Request
 	(!elem.hasAttribute("method")) ? method_thru = "GET" : method_thru = elem.getAttribute("method");
 	(!elem.hasAttribute("mode")) ? mode_thru = "no-cors" : mode_thru = elem.getAttribute("mode");
 	(!elem.hasAttribute("cache")) ? cache_thru = "no-cache" : cache_thru = elem.getAttribute("cache");
