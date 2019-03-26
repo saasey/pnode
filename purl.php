@@ -536,6 +536,20 @@ class pURL extends pUser {
 
 	$handler = new pUrl();
 
-	$handler->parse_call();
-	$handler->print_page();
-	echo '<script type="text/javascript">self.location = "' . $handler->opt_ssl . $handler->request["server"] . '"</script>';
+/**
+ *	To run the curl type;
+ *
+ *	$handler->update_queue();
+ *	if ($handler->user_count() > $x)
+ *		$handler->run();
+ *
+*/
+
+/**
+ *	To run with single calls
+ *	
+ *	$handler->parse_call();
+ *	$handler->print_page();
+ *	echo '<script type="text/javascript">self.location = "' . $handler->opt_ssl . $handler->request["server"] . '"</script>';
+ *
+*/
