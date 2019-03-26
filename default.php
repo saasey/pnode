@@ -8,7 +8,7 @@ echo "<a id=\"donate\" redirect=\"follow\" method=\"POST\" to-pipe=\"https://www
 echo "<input type=\"hidden\" pipe=\"donate\" class=\"data-pipe\" name=\"cmd\" value=\"_s-xclick\" />";
 echo "<input type=\"hidden\" pipe=\"donate\" class=\"data-pipe\" name=\"hosted_button_id\" value=\"TMZJ4ZGG84ACL\" />";
 echo "<input type=\"hidden\" pipe=\"donate\" class=\"data-pipe\" name=\"source\" value=\"url\" />";
-echo "<a pipe=\"wiki-link\" class=\"data-pipe\" name=\"me\" value=\"mailto:inland14@live.com\">Contact</a> + ";
+echo "<a pipe=\"wiki-link\" class=\"data-pipe\" name=\"me\" href=\"mailto:inland14@live.com\">Contact</a> + ";
 echo "<a pipe=\"wiki-link\" class=\"data-pipe\" name=\"ops\" value=\"hey\" href=\"mailto:inland14@live.com\">Bug Report</a>";
 
 // the out-pipe attribute comes to here
