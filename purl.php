@@ -31,7 +31,7 @@ class pURL extends pUser {
 	public $delay;
 	// Set for MAX of history length of users
 	public $max_history;
-
+	public $content_type;
 	public $timer;
 
 	function __construct() {
@@ -57,6 +57,7 @@ class pURL extends pUser {
 		$this->delay = 1175;
 		$this->max_history = 10;
 		$this->timer = time();
+		$this->content_type = 'application/x-www-form-urlencoded';
 	}
 
 	public function run() {
@@ -120,10 +121,10 @@ class pURL extends pUser {
 		curl_setopt($handle, CURLOPT_BINARYTRANSFER, true);
 		curl_setopt($handle, CURLOPT_ENCODING, "");
 		curl_setopt($handle, CURLOPT_USERAGENT, $user_agent);
-	   
+
 		$len = strlen(json_encode($field));
-		curl_setopt($handle, CURLOPT_HTTPHEADER, array(																	  
-			'Content-Type' => 'application/x-www-form-urlencoded',
+		curl_setopt($handle, CURLOPT_HTTPHEADER, array(														  
+			'Content-Type' => $this->content_type,
 			'Content-Length' => $len
 			)
 		);
@@ -237,6 +238,11 @@ class pURL extends pUser {
 				$search[] = array($x => $this->user->session);
 		}
 		return $search;
+	}
+
+	// For curl operations
+	public function set_content_type($type) {
+		return $this->content_type = $type;
 	}
 
 	// look for an email address amongst the
