@@ -31,6 +31,8 @@ class pURL extends pUser {
 	public $delay;
 	// Set for MAX of history length of users
 	public $max_history;
+	public $max_requests;
+	public $max_users;
 	public $content_type;
 	public $timer;
 
@@ -48,13 +50,15 @@ class pURL extends pUser {
 	// This is for listing all users in the queue
 		$this->users = [];
 	// Default is to turn off HTTPS:// but the program figures it out itself
-	// or the most part, but if you do run into trouble, just run this function
+	// for the most part, but if you do run into trouble, just run this function
 		$this->option_ssl(false);
 	// Percent of equal critical data points before return in $this->users
 	// Change at any time
 		$this->percent_diff = 0.75;
 	// microsecond delay in wave function
 		$this->delay = 1175;
+		$this->max_users = 10;
+		$this->max_requests = 4;
 		$this->max_history = 10;
 		$this->timer = time();
 		$this->content_type = 'application/x-www-form-urlencoded';
@@ -412,7 +416,9 @@ class pURL extends pUser {
 	// ***
 	public function parse_call() {
 		$this->spoof_check();
-		if (count($this->request) == 4)
+		if (count($this->request) == $this->max_requests
+		
+		)
 			exit();
 		if (!$this->match_server($this->request['host'])) {
 			echo "Fatal Error: Your address is unknown";
@@ -438,6 +444,7 @@ class pURL extends pUser {
 			return true;
 		if (in_array($this->request['host'],$spoof_list))
 			exit();
+		return true;
 	}
 
 	//***
@@ -546,8 +553,9 @@ class pURL extends pUser {
  *	To run the curl type;
  *
  *	$handler->update_queue();
- *	if ($handler->user_count() > $x)
- *		$handler->run();
+ *	while ($handler->user_count() < $this->max_users)
+ *       sleep(2);
+ *	$handler->run();
  *
 */
 
