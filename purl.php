@@ -56,9 +56,18 @@ class pURL extends pUser {
 	// Change at any time
 		$this->percent_diff = 0.75;
 	// microsecond delay in wave function
+	// where users are released from holding
+	// at this variable's X axis crossing
 		$this->delay = 1175;
+	// max_users is the number of waiting
+	// users before traffic is considered congested
+	// and the $this->run() function is called
+	// (Only used if running top code at bottom of this page)
 		$this->max_users = 10;
+	// A user may only request x amout of times
+	// before being flagged.
 		$this->max_requests = 4;
+	// this is how deep our history goes with each incoming user
 		$this->max_history = 10;
 		$this->timer = time();
 		$this->content_type = 'application/x-www-form-urlencoded';
