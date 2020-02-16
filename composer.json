@@ -1,0 +1,14 @@
+{
+    "name": "saasey/pnode",
+    "description": "A level-head on the scope of data, integrity, security, and most of all, ease of use; on the ideology of hammering and spoofing",
+    "type": "metapackage",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Anthony David Pulse, Jr.",
+            "email": "inland14@live.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {}
+}
